@@ -55,6 +55,7 @@ import graql.lang.query.GraqlDelete;
 import graql.lang.query.GraqlGet;
 import graql.lang.query.GraqlInsert;
 import graql.lang.query.GraqlQuery;
+import graql.lang.query.GraqlStat;
 import graql.lang.query.GraqlUndefine;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -267,6 +268,12 @@ public class GraknClient implements AutoCloseable {
         @Override
         public Stream<ConceptMap> stream(GraqlGet query, boolean infer) {
             Iterable<ConceptMap> iterable = () -> this.rpcIterator(query, infer);
+            return StreamSupport.stream(iterable.spliterator(), false);
+        }
+
+        @Override
+        public Stream<Numeric> stream(GraqlStat query, boolean infer) {
+            Iterable<Numeric> iterable = () -> this.rpcIterator(query, infer);
             return StreamSupport.stream(iterable.spliterator(), false);
         }
 
