@@ -52,6 +52,8 @@ public class RequestBuilder {
         }
     }
 
+    public static long buildQueryResponse = 0;
+
     /**
      * An RPC Request Builder class for Transaction Service
      */
@@ -85,11 +87,15 @@ public class RequestBuilder {
         }
 
         public static SessionProto.Transaction.Req query(String queryString, boolean infer) {
+            long start = System.currentTimeMillis();
+
             SessionProto.Transaction.Query.Req request = SessionProto.Transaction.Query.Req.newBuilder()
                     .setQuery(queryString)
                     .setInfer(infer ? SessionProto.Transaction.Query.INFER.TRUE : SessionProto.Transaction.Query.INFER.FALSE)
                     .build();
-            return SessionProto.Transaction.Req.newBuilder().setQueryReq(request).build();
+            SessionProto.Transaction.Req build = SessionProto.Transaction.Req.newBuilder().setQueryReq(request).build();
+            buildQueryResponse += System.currentTimeMillis() - start;
+            return build;
         }
 
         public static SessionProto.Transaction.Req getSchemaConcept(Label label) {

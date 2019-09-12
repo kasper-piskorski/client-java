@@ -21,6 +21,7 @@ package grakn.client;
 
 import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterators;
 import grakn.client.concept.RemoteConcept;
 import grakn.client.exception.GraknClientException;
 import grakn.client.rpc.RequestBuilder;
@@ -29,6 +30,7 @@ import grakn.client.rpc.Transceiver;
 import grakn.core.concept.Concept;
 import grakn.core.concept.ConceptId;
 import grakn.core.concept.Label;
+import grakn.core.concept.answer.Answer;
 import grakn.core.concept.answer.AnswerGroup;
 import grakn.core.concept.answer.ConceptList;
 import grakn.core.concept.answer.ConceptMap;
@@ -186,6 +188,12 @@ public class GraknClient implements AutoCloseable {
         }
     }
 
+    public static long rpcIteratorTime = 0;
+    public static long responseTime = 0;
+    public static long sendRequestTime = 0;
+    public static long streamTime = 0;
+    public static long createIteratorTime = 0;
+
     /**
      * Remote implementation of grakn.core.api.Transaction that communicates with a Grakn server using gRPC.
      */
@@ -252,10 +260,15 @@ public class GraknClient implements AutoCloseable {
             return StreamSupport.stream(iterable.spliterator(), false);
         }
 
+
+
         @Override
         public Stream<ConceptMap> stream(GraqlInsert query, boolean infer) {
+            long start = System.currentTimeMillis();
             Iterable<ConceptMap> iterable = () -> this.rpcIterator(query, infer);
-            return StreamSupport.stream(iterable.spliterator(), false);
+            Stream<ConceptMap> stream = StreamSupport.stream(iterable.spliterator(), false);
+            streamTime += System.currentTimeMillis() - start;
+            return stream;
         }
 
         @Override
@@ -275,14 +288,29 @@ public class GraknClient implements AutoCloseable {
         }
 
         private Iterator rpcIterator(GraqlQuery query, boolean infer) {
+            long start = System.currentTimeMillis();
             transceiver.send(RequestBuilder.Transaction.query(query.toString(), infer));
+            sendRequestTime += System.currentTimeMillis() - start;
+
+            long start2 = System.currentTimeMillis();
             SessionProto.Transaction.Res txResponse = responseOrThrow();
+            responseTime += System.currentTimeMillis() - start2;
+
+            long start3 = System.currentTimeMillis();
             int iteratorId = txResponse.getQueryIter().getId();
-            return new RPCIterator<>(
+
+            /*
+            RPCIterator<Answer> answerRPCIterator = new RPCIterator<>(
                     this,
                     iteratorId,
                     response -> ResponseReader.answer(response.getQueryIterRes().getAnswer(), this)
             );
+            createIteratorTime += System.currentTimeMillis() - start3;
+            rpcIteratorTime += System.currentTimeMillis() - start;
+            */
+
+            return Iterators.singletonIterator(ResponseReader.answer(this.iterate(iteratorId).getQueryIterRes().getAnswer(), this));
+            //return answerRPCIterator;
         }
 
         @Override

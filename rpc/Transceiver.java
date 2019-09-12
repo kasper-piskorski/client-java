@@ -26,6 +26,8 @@ import grakn.protocol.session.SessionServiceGrpc;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -101,6 +103,9 @@ public class Transceiver implements AutoCloseable {
         return responseListener.terminated.get();
     }
 
+    public static long pollTime = 0;
+    public static long takeTime = 0;
+
     /**
      * A StreamObserver that stores all responses in a blocking queue.
          * A response can be polled with the #poll() method.
@@ -130,7 +135,9 @@ public class Transceiver implements AutoCloseable {
 
         Response poll() throws InterruptedException {
             // First check for a response without blocking
+            long start = System.currentTimeMillis();
             Response response = queue.poll();
+            pollTime += System.currentTimeMillis() - start;
 
             if (response != null) {
                 return response;
@@ -143,7 +150,11 @@ public class Transceiver implements AutoCloseable {
             }
 
             // Block for a response (because we are confident there are no responses and the connection has not closed)
-            return queue.take();
+            start = System.currentTimeMillis();
+            Response take = queue.take();
+            takeTime += System.currentTimeMillis() - start;
+            return take;
+
         }
     }
 

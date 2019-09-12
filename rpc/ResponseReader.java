@@ -86,12 +86,17 @@ public class ResponseReader {
         );
     }
 
+    public static long buildAnswer = 0;
+
     private static ConceptMap conceptMap(AnswerProto.ConceptMap res, GraknClient.Transaction tx) {
+        long start = System.currentTimeMillis();
         Map<Variable, Concept> answers = new HashMap<>();
         res.getMapMap().forEach(
                 (resVar, resConcept) -> answers.put(new Variable(resVar), RemoteConcept.of(resConcept, tx))
         );
-        return new ConceptMap(Collections.unmodifiableMap(answers), explanation(res.getExplanation(), tx));
+        ConceptMap conceptMap = new ConceptMap(Collections.unmodifiableMap(answers), explanation(res.getExplanation(), tx));
+        buildAnswer += System.currentTimeMillis() - start;
+        return conceptMap;
     }
 
     private static ConceptList conceptList(AnswerProto.ConceptList res) {
